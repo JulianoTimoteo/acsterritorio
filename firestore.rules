@@ -17,11 +17,11 @@ service cloud.firestore {
     }
 
     function ehMaster() {
-      return email() == 'master@seu-dominio.com'; // TODO: Substitua pelo seu e-mail real apenas no momento do deploy
+      return email() == 'jtsdowload@gmail.com';
     }
 
     function ehAdminInicial() {
-      return ehMaster() || email() == 'admin@seu-dominio.com'; // TODO: Substitua pelo seu e-mail real apenas no momento do deploy
+      return ehMaster() || email() == 'juliano.timoteo@hotmail.com';
     }
 
     function perfil() {
@@ -55,7 +55,7 @@ service cloud.firestore {
     // --- Perfis de usuário ---
     function ehPerfilMaster() {
       return resource.data.get('funcao', 'agente') == 'master' ||
-        resource.data.get('email', '') == 'master@seu-dominio.com';
+        resource.data.get('email', '') == 'jtsdowload@gmail.com';
     }
 
     match /profiles/{uid} {
