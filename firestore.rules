@@ -1,7 +1,6 @@
 rules_version = '2';
 
 // Regras do ACS Território (projeto acscomunitario-704be)
-// Firebase guarda apenas identidade e dados administrativos.
 // Dados de pacientes só entram no Firestore já criptografados (nuvem_arquivos).
 service cloud.firestore {
   match /databases/{database}/documents {
