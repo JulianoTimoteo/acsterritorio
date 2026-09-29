@@ -1,0 +1,21 @@
+# Roadmap de homologação
+
+- [x] Inventariar arquitetura, rotas, permissões e fluxos
+- [x] Corrigir Hooks e estados de `/consultas`
+- [x] Auditar e corrigir Hooks globalmente
+- [x] Validar autenticação Firebase e mensagens de erro
+- [x] Validar autorização persistente por unidade/aparelho
+- [x] Remover OneDrive/Microsoft Graph e manter somente Google Drive
+- [x] Auditar CRUD, formulários, botões e permissões
+- [x] Executar testes negativos, responsivos e de regressão
+- [x] Auditar dependências, segurança, PWA e build
+- [x] Atualizar README e produzir matriz final de evidências
+- [x] Corrigir bloqueio após login da conta master
+- [x] Criar e validar tutorial inicial das abas
+- [x] Corrigir alternância de tema claro/escuro (temas mensais sobrepunham o escuro)
+- [x] Fila mensal de visitas no painel com botão "Visitado" e prioridade do mês anterior
+- [x] Recalibração de GPS com várias leituras e escolha da mais precisa
+- [x] Google Drive: pastas por unidade dentro da pasta compartilhada da equipe
+- [x] Código de 4 dígitos gerado pelo agente que inicia a transferência entre unidades
+- [x] Sincronização mostra conexão, envio, sucesso e motivo da falha no próprio painel
+- [ ] Liberar o domínio de pré-visualização nos domínios autorizados do Firebase (ação do administrador)

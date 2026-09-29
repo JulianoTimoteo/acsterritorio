@@ -1,0 +1,216 @@
+rules_version = '2';
+
+// Regras do ACS Território (projeto acscomunitario-704be)
+// Firebase guarda apenas identidade e dados administrativos.
+// Dados de pacientes só entram no Firestore já criptografados (nuvem_arquivos).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function email() {
+      return autenticado() && request.auth.token.email_verified == true 
+        ? (request.auth.token.email is string ? request.auth.token.email.lower() : '') 
+        : '';
+    }
+
+    function ehMaster() {
+      return email() == 'master@seu-dominio.com'; // TODO: Substitua pelo seu e-mail real apenas no momento do deploy
+    }
+
+    function ehAdminInicial() {
+      return ehMaster() || email() == 'admin@seu-dominio.com'; // TODO: Substitua pelo seu e-mail real apenas no momento do deploy
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
+    }
+
+    function temPerfil() {
+      return autenticado() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
+    }
+
+    function papel() {
+      return temPerfil()
+        ? (perfil().funcao is string
+          ? perfil().funcao
+          : (perfil().role is string ? perfil().role : 'agente'))
+        : 'agente';
+    }
+
+    function ehAdmin() {
+      return ehMaster() || papel() == 'master' || papel() == 'admin';
+    }
+
+    function ehSupervisor() {
+      return ehAdmin() || papel() == 'supervisor';
+    }
+
+    function minhaUnidade() {
+      return temPerfil() ? perfil().unitId : null;
+    }
+
+    // --- Perfis de usuário ---
+    function ehPerfilMaster() {
+      return resource.data.get('funcao', 'agente') == 'master' ||
+        resource.data.get('email', '') == 'master@seu-dominio.com';
+    }
+
+    match /profiles/{uid} {
+      // O próprio usuário lê o seu perfil; gestores leem apenas a unidade; master lê tudo.
+      // A conta master é invisível para todos os demais.
+      allow read: if autenticado() && (
+        request.auth.uid == uid || ehMaster() ||
+        (ehSupervisor() && resource.data.unitId == minhaUnidade() && !ehPerfilMaster())
+      );
+
+      // Criação do próprio perfil no primeiro acesso (sempre pendente, exceto master).
+      // O master (e gestores da própria unidade) também podem criar perfis de outras pessoas.
+      allow create: if autenticado() && (
+        ehMaster() ||
+        (ehAdmin() && request.resource.data.get('funcao', 'agente') != 'master' &&
+          request.resource.data.unitId == minhaUnidade()) ||
+        (request.auth.uid == uid && (
+          (ehAdminInicial() && request.resource.data.aprovado == true &&
+            request.resource.data.funcao in ['master', 'admin']) || (
+            request.resource.data.aprovado == false &&
+            request.resource.data.funcao in ['agente', 'consulta']
+          )
+        ))
+      );
+
+
+      // O usuário atualiza apenas dados próprios não sensíveis.
+      allow update: if autenticado() && (
+        ehMaster() ||
+        (ehAdminInicial() && request.auth.uid == uid &&
+          request.resource.data.aprovado == true &&
+          request.resource.data.funcao in ['master', 'admin'] &&
+          request.resource.data.unitId == 'unidade-principal') ||
+        (ehAdmin() && !ehPerfilMaster() && resource.data.unitId == minhaUnidade() &&
+          request.resource.data.get('funcao', 'agente') != 'master' &&
+          request.resource.data.unitId == resource.data.unitId) ||
+        (request.auth.uid == uid &&
+           request.resource.data.funcao == resource.data.funcao &&
+         request.resource.data.aprovado == resource.data.aprovado &&
+         request.resource.data.unitId == resource.data.unitId &&
+         request.resource.data.get('bloqueado', false) == resource.data.get('bloqueado', false))
+      );
+
+      allow delete: if ehMaster() ||
+        (ehAdmin() && !ehPerfilMaster() && resource.data.unitId == minhaUnidade());
+    }
+
+    // --- Unidades de saúde ---
+    match /units/{unitId} {
+      allow read: if autenticado() && (ehAdmin() || unitId == minhaUnidade());
+      allow create, update: if ehAdmin();
+      allow delete: if ehMaster();
+    }
+
+    // --- Aparelhos registrados ---
+    match /devices/{deviceId} {
+      allow read: if autenticado() && (
+        ehMaster() ||
+        resource.data.userId == request.auth.uid ||
+        (ehSupervisor() && resource.data.unitId == minhaUnidade())
+      );
+      // O aparelho se registra sozinho, sempre pendente de aprovação.
+      allow create: if autenticado() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.unitId == minhaUnidade() &&
+        ((ehAdmin() && request.resource.data.unitId == minhaUnidade()) ||
+          request.resource.data.status == 'pendente');
+      // Aprovar/revogar é ato administrativo; o dono só atualiza a atividade.
+      allow update: if autenticado() && (
+        ehMaster() ||
+        (ehAdmin() && resource.data.unitId == minhaUnidade() &&
+          request.resource.data.unitId == resource.data.unitId) ||
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.userId == resource.data.userId &&
+         request.resource.data.status == resource.data.status &&
+         request.resource.data.unitId == resource.data.unitId)
+      );
+      allow delete: if ehMaster() || (ehAdmin() && resource.data.unitId == minhaUnidade());
+    }
+
+    // --- Notificações ---
+    match /notifications/{id} {
+      allow read, delete: if autenticado() &&
+        (ehMaster() || resource.data.user_id == request.auth.uid);
+      allow update: if autenticado() && (
+        ehMaster() ||
+        (resource.data.user_id == request.auth.uid &&
+          request.resource.data.user_id == resource.data.user_id)
+      );
+      allow create: if autenticado() && (
+        ehMaster() || request.resource.data.user_id == request.auth.uid
+      );
+    }
+
+    // --- Registros administrativos (auditoria) ---
+    match /admin_logs/{id} {
+      allow read: if ehAdmin();
+      allow create: if ehAdmin();
+      allow update, delete: if false; // auditoria é imutável
+    }
+
+    // Pedidos entre unidades: não contêm dados clínicos, apenas IDs e aprovações.
+    match /transferencias_unidade/{id} {
+      allow read: if autenticado() && (
+        ehMaster() ||
+        resource.data.origemUserId == request.auth.uid ||
+        resource.data.destinoUserId == request.auth.uid ||
+        (ehAdmin() && (resource.data.origemUnitId == minhaUnidade() ||
+          resource.data.destinoUnitId == minhaUnidade()))
+      );
+      allow create: if autenticado() &&
+        request.resource.data.origemUserId == request.auth.uid &&
+        request.resource.data.origemUnitId == minhaUnidade() &&
+        request.resource.data.destinoUnitId != minhaUnidade() &&
+        request.resource.data.status == 'aguardando_gestores' &&
+        request.resource.data.aprovacaoOrigem == false &&
+        request.resource.data.aprovacaoDestino == false;
+      allow update: if autenticado() && (
+        ehMaster() ||
+        (ehAdmin() && resource.data.origemUnitId == minhaUnidade() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['aprovacaoOrigem', 'status', 'atualizadoEm'])) ||
+        (ehAdmin() && resource.data.destinoUnitId == minhaUnidade() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['aprovacaoDestino', 'status', 'atualizadoEm'])) ||
+        (resource.data.origemUserId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'atualizadoEm'])) ||
+        (resource.data.destinoUserId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'atualizadoEm']))
+      ) && request.resource.data.familyId == resource.data.familyId &&
+        request.resource.data.origemUnitId == resource.data.origemUnitId &&
+        request.resource.data.origemUserId == resource.data.origemUserId &&
+        request.resource.data.destinoUnitId == resource.data.destinoUnitId &&
+        request.resource.data.destinoUserId == resource.data.destinoUserId &&
+        request.resource.data.codigoImpressao == resource.data.codigoImpressao;
+      allow delete: if false;
+    }
+
+    // Cópias CRIPTOGRAFADAS dos dados da unidade (ilegíveis sem a senha da equipe).
+    match /nuvem_arquivos/{id} {
+      allow read: if temPerfil() && (ehMaster() || resource.data.unitId == minhaUnidade());
+      allow create, update: if temPerfil() && request.resource.data.unitId is string && (
+        ehMaster() || request.resource.data.unitId == minhaUnidade() ||
+        request.resource.data.tipo == 'transferencia');
+      allow delete: if false;
+
+      match /partes/{parte} {
+        allow read: if temPerfil() && (ehMaster() || resource.data.unitId == minhaUnidade());
+        allow write: if temPerfil() && request.resource.data.unitId is string;
+      }
+    }
+
+    // Nada mais é permitido.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
