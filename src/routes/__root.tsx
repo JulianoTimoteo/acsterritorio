@@ -151,7 +151,8 @@ function RootComponent() {
   // Verificação de versão: evita rodar arquivos antigos vindos do cache
   useVersaoApp();
 
-  // Registro do Service Worker para suporte offline
+  // Registro do Service Worker temporariamente desativado devido a incompatibilidade com TanStack Start
+  /*
   useRegisterSW({
     onNeedRefresh() {
       toast("Nova versão disponível!", {
@@ -170,6 +171,7 @@ function RootComponent() {
       });
     },
   });
+  */
 
   return (
     <QueryClientProvider client={queryClient}>
