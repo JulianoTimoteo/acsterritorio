@@ -101,7 +101,13 @@ export function GerenciarUnidades() {
         <CardContent className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="un-nome">Nome da unidade</Label>
-            <Input id="un-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+            <Input 
+              id="un-nome" 
+              value={nome} 
+              onChange={(e) => setNome(e.target.value)} 
+              autoComplete="off" 
+              data-1p-ignore 
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="un-senha">Senha de acesso</Label>
@@ -110,6 +116,8 @@ export function GerenciarUnidades() {
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              autoComplete="new-password"
+              data-1p-ignore
             />
           </div>
           <div className="space-y-2">
@@ -119,6 +127,8 @@ export function GerenciarUnidades() {
               type="password"
               value={confirmar}
               onChange={(e) => setConfirmar(e.target.value)}
+              autoComplete="new-password"
+              data-1p-ignore
             />
           </div>
           <div className="sm:col-span-3">
