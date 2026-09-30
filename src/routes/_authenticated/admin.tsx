@@ -1,6 +1,5 @@
 import { useAcs } from "@/auth/AcsProvider";
 import { ConfigurarNuvem } from "@/components/ConfigurarNuvem";
-import { CriarGestor } from "@/components/CriarGestor";
 import { GerenciarUnidades } from "@/components/GerenciarUnidades";
 import { AprovacoesTransferencia } from "@/components/AprovacoesTransferencia";
 import { PermissoesAbas } from "@/components/PermissoesAbas";
@@ -322,9 +321,6 @@ function Admin() {
           </div>
 
           <div className="grid gap-6">
-            <CriarGestor
-              aoConcluir={() => void queryClient.invalidateQueries({ queryKey: ["usuarios"] })}
-            />
             <ConfigurarNuvem />
             <AprovacoesTransferencia />
 
