@@ -259,13 +259,21 @@ function Admin() {
             disabled={trabalhando}
             onClick={() =>
               acao(u.id, async () => {
+                if (!u.admin) {
+                  const jaExisteAdmin = usuarios.some(
+                    (other) => other.id !== u.id && other.admin && other.unitId === u.unitId
+                  );
+                  if (jaExisteAdmin) {
+                    throw new Error("Esta unidade já possui um gestor. Remova o gestor atual antes de promover outro.");
+                  }
+                }
                 const actorId = await currentUserId();
                 await updateDoc(doc(db, "profiles", u.id), {
                   funcao: u.admin ? "agente" : "admin",
                 });
                 await addDoc(collection(db, "admin_logs"), {
                   action: "definir_admin",
-                  actor_id: actorId,
+                  actorId,
                   target_id: u.id,
                   details: { admin: !u.admin },
                   created_at: new Date().toISOString(),
