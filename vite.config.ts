@@ -9,6 +9,7 @@ export default defineConfig({
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
+        devOptions: { enabled: true },
         includeAssets: ["favicon.svg", "favicon.svg", "favicon.svg"],
         manifest: false,
         workbox: {

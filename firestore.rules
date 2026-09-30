@@ -21,7 +21,7 @@ service cloud.firestore {
     }
 
     function ehAdminInicial() {
-      return ehMaster() || email() == 'juliano.timoteo@hotmail.com';
+      return ehMaster() || email() == 'juliano.timoteo@hotmail.com' || email() == 'admin@santavitoria.com';
     }
 
     function perfil() {
