@@ -61,10 +61,12 @@ export async function criarUnidade(nome: string, senha: string, gestorId: string
  * Se o novo gestor já cuidava de outra unidade, essa unidade anterior vai
  * automaticamente para o gestor que fez a entrega — ninguém fica com duas.
  */
-export async function transferirUnidade(unitId: string, novoGestorId: string, gestorAtualId: string) {
+export async function transferirUnidade(unitId: string, novoGestorId: string, executorId: string) {
   const alvo = await getDoc(doc(db, COLECAO, unitId));
   if (!alvo.exists()) throw new Error("Unidade não encontrada.");
   const unidade = alvo.data() as Unidade;
+
+  const gestorAntigoId = unidade.gestorId;
 
   const todas = await listarUnidades();
   const unidadeDoNovoGestor = todas.find((u) => u.gestorId === novoGestorId && u.id !== unitId);
@@ -73,13 +75,21 @@ export async function transferirUnidade(unitId: string, novoGestorId: string, ge
   await updateDoc(doc(db, "profiles", novoGestorId), { unitId, unidade: unidade.nome });
 
   if (unidadeDoNovoGestor) {
-    await updateDoc(doc(db, COLECAO, unidadeDoNovoGestor.id), { gestorId: gestorAtualId });
-    await updateDoc(doc(db, "profiles", gestorAtualId), {
-      unitId: unidadeDoNovoGestor.id,
-      unidade: unidadeDoNovoGestor.nome,
-    });
+    // Troca: o antigo gestor assume a unidade que o novo desocupou.
+    if (gestorAntigoId) {
+      await updateDoc(doc(db, COLECAO, unidadeDoNovoGestor.id), { gestorId: gestorAntigoId });
+      await updateDoc(doc(db, "profiles", gestorAntigoId), {
+        unitId: unidadeDoNovoGestor.id,
+        unidade: unidadeDoNovoGestor.nome,
+      });
+    }
   } else {
-    await updateDoc(doc(db, "profiles", gestorAtualId), { unitId: null, unidade: null });
+    if (gestorAntigoId) {
+      await updateDoc(doc(db, "profiles", gestorAntigoId), { unitId: null, unidade: null });
+    }
   }
+
+  // Se o executor era um master apenas repassando, garantir que ele próprio não fique preso a uma unidade que não gerencia.
+  // Mas como a lógica acima já foca no gestor real, o master não será afetado a menos que ele fosse o gestorAntigoId.
   return unidadeDoNovoGestor ?? null;
 }
