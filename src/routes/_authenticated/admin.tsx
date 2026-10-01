@@ -99,6 +99,7 @@ function Admin() {
       await queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       await queryClient.invalidateQueries({ queryKey: ["ehAdmin"] });
       await queryClient.invalidateQueries({ queryKey: ["admin_logs"] });
+      await queryClient.invalidateQueries({ queryKey: ["gestores"] });
       toast.success("Permissões atualizadas.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro ao atualizar.");

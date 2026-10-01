@@ -42,9 +42,19 @@ export function GerenciarUnidades() {
   });
 
   const { data: gestores = [] } = useQuery({
-    queryKey: ["gestores"],
+    queryKey: ["gestores", perfil?.unitId, perfil?.funcao],
+    enabled: !!perfil,
     queryFn: async () => {
-      const snap = await getDocs(query(collection(db, "profiles"), where("funcao", "==", "admin")));
+      const base = collection(db, "profiles");
+      const q =
+        perfil?.funcao === "master"
+          ? query(base, where("funcao", "==", "admin"))
+          : query(
+              base,
+              where("funcao", "==", "admin"),
+              where("unitId", "==", perfil?.unitId ?? "__nenhuma__")
+            );
+      const snap = await getDocs(q);
       return snap.docs.map((d) => ({ id: d.id, nome: (d.data() as any).nome as string | undefined }));
     },
   });

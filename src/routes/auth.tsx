@@ -42,7 +42,10 @@ function AuthPage() {
   const campanha = campanhaDoMes();
 
   useEffect(() => {
-    if (!preparandoConta && user && perfil) navigate({ to: "/painel", replace: true });
+    if (!preparandoConta && user && perfil) {
+      toast.success(`Bem-vindo de volta, ${perfil.nome}!`, { duration: 3000 });
+      navigate({ to: "/painel", replace: true });
+    }
   }, [preparandoConta, user, perfil, navigate]);
 
   /** Traduz erros de autenticação para mensagens claras em português. */
