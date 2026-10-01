@@ -72,24 +72,31 @@ export async function transferirUnidade(unitId: string, novoGestorId: string, ex
   const unidadeDoNovoGestor = todas.find((u) => u.gestorId === novoGestorId && u.id !== unitId);
 
   await updateDoc(doc(db, COLECAO, unitId), { gestorId: novoGestorId });
+  
+  // Garantir que o perfil do novo gestor existe, se não, deve lançar erro ao invés de prosseguir silenciosamente.
+  // Como ele foi escolhido na lista, ele deve existir, mas é mais seguro.
   await updateDoc(doc(db, "profiles", novoGestorId), { unitId, unidade: unidade.nome });
 
   if (unidadeDoNovoGestor) {
-    // Troca: o antigo gestor assume a unidade que o novo desocupou.
     if (gestorAntigoId) {
       await updateDoc(doc(db, COLECAO, unidadeDoNovoGestor.id), { gestorId: gestorAntigoId });
-      await updateDoc(doc(db, "profiles", gestorAntigoId), {
-        unitId: unidadeDoNovoGestor.id,
-        unidade: unidadeDoNovoGestor.nome,
-      });
+      
+      const snapAntigo = await getDoc(doc(db, "profiles", gestorAntigoId));
+      if (snapAntigo.exists()) {
+        await updateDoc(doc(db, "profiles", gestorAntigoId), {
+          unitId: unidadeDoNovoGestor.id,
+          unidade: unidadeDoNovoGestor.nome,
+        });
+      }
     }
   } else {
     if (gestorAntigoId) {
-      await updateDoc(doc(db, "profiles", gestorAntigoId), { unitId: null, unidade: null });
+      const snapAntigo = await getDoc(doc(db, "profiles", gestorAntigoId));
+      if (snapAntigo.exists()) {
+        await updateDoc(doc(db, "profiles", gestorAntigoId), { unitId: null, unidade: null });
+      }
     }
   }
 
-  // Se o executor era um master apenas repassando, garantir que ele próprio não fique preso a uma unidade que não gerencia.
-  // Mas como a lógica acima já foca no gestor real, o master não será afetado a menos que ele fosse o gestorAntigoId.
   return unidadeDoNovoGestor ?? null;
 }
