@@ -170,7 +170,9 @@ export function GerenciarUnidades() {
                 <div key={u.id} className="space-y-3 rounded-lg border p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Building2 className="size-4 text-primary" />
-                    <span className="font-semibold">{u.nome}</span>
+                    <span className="font-semibold">
+                      {u.nome} - Gestor: {gestores.find((g) => g.id === u.gestorId)?.nome || "Desconhecido"}
+                    </span>
                     {u.gestorId === perfil?.id && <Badge variant="secondary">Você gerencia</Badge>}
                   </div>
                   {senhaLocal && (
